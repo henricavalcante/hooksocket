@@ -1,0 +1,14 @@
+<script src="https://cdn.jsdelivr.net/socket.io-client/1.3.2/socket.io.min.js"></script>
+<script>
+  var socket = io('ws://localhost:3001/');
+  socket.on('connect', function () {
+
+    socket.emit('subscribeClient', {
+      clientKey: "myCryptClientKey",
+    });
+
+    socket.on('notification', function (msg) {
+      console.log(msg);
+    });
+  });
+</script>
