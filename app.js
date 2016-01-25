@@ -5,21 +5,22 @@ const socketIo = require('socket.io');
 const koa = require('koa');
 const koaRoute = require('koa-route');
 const koaBody = require('koa-body');
-var app = module.exports = koa();
+const app = module.exports = koa();
 
 const nts = require('./events');
+
 const configs = {
   portHooks: 3000,
   portSocket: 3001,
   appSecret: "MySecretAppKey" 
 }
-var clients = {};
+const clients = {};
 
-var io = socketIo(configs.portSocket);
+const io = socketIo(configs.portSocket);
 
-io.on('connection', function (socket) {
+io.on('connection', (socket) => {
 
-  socket.on('subscribeClient', function(data) {
+  socket.on('subscribeClient', (data) => {
 
     let clientId = data.clientKey || socket.id;
 
@@ -35,7 +36,7 @@ io.on('connection', function (socket) {
 
   });
 
-  socket.on('disconnect', function() {
+  socket.on('disconnect', () => {
     delete clients[socket.clientId][socket.id];
     if (!Object.keys(clients[socket.clientId]).length) {
       delete clients[socket.clientId];
@@ -46,10 +47,12 @@ io.on('connection', function (socket) {
 
 app.use(koaBody());
 
-nts.map(function(nt) {
+nts.map((nt) => {
   app.use(koaRoute[nt.route.method](nt.route.path, function *() {
-    //let socket = clients[this.request.body.socketId];
-    //socket.emit('notification', nt.template);
+    Object.keys(clients[this.request.body.clientId]).map((key) => {
+      let socket = clients[this.request.body.clientId][key];
+      socket.emit('notification', nt.template);
+    });
     this.body = nt.template;
   }));
 });
