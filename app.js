@@ -5,56 +5,99 @@ const socketIo = require('socket.io');
 const koa = require('koa');
 const koaRoute = require('koa-route');
 const koaBody = require('koa-body');
-const app = module.exports = koa();
-
-const nts = require('./events');
+const app = koa();
+const crypto = require('crypto');
 
 const configs = {
   portHooks: 3000,
   portSocket: 3001,
-  appSecret: "MySecretAppKey" 
+  secretKey: 'MySecretAppKey',
 }
+
 const clients = {};
+const native_notifications = [{
+    route: {
+      method: 'get',
+      path: '/'
+    },
+    scope: 'global',
+    msg: {
+      template: 'http://github.com/henricavalcante/hooksocket'
+    }
+  }];
 
 const io = socketIo(configs.portSocket);
 
-io.on('connection', (socket) => {
+module.exports = (notifications, settings) => {
 
-  socket.on('subscribeClient', (data) => {
+  Object.assign(configs, settings);
 
-    let clientId = data.clientKey || socket.id;
+  // middleware for body parser
+  app.use(koaBody());
 
-    if (clients[clientId] === undefined) {
-      clients[clientId] = {};
-    }
+  // register routes on koa
+  [...native_notifications, ...notifications].map((nt) => {
+    app.use(koaRoute[nt.route.method](nt.route.path, function *() {
+      const payload = {
+        msg: nt.msg.template, //to-do
+        date: new Date()
+      }
 
-    socket.clientId = clientId;
+      // append notification paylod
+      Object.assign(payload, nt.payload);
 
-    clients[clientId][socket.id] = socket;
+      // append body payload
+      if (this.request.body.payload) {
+        Object.assign(payload, this.request.body.payload);
+      }
 
-    console.log("clientId: ", clientId, ' - ', socket.id);
+      switch (nt.scope) {
+          case 'client':
+              var clientId = this.request.body.clientId; //to-do
+
+              if (!clients[clientId]) {
+                break;
+              }
+
+              Object.keys(clients[clientId]).map((key) => {
+                let socket = clients[clientId][key];
+                socket.emit('client_notification', payload);
+              });
+              break;
+          default:
+              io.sockets.emit('global_notification', payload);
+              break;
+      }
+
+      this.body = payload;
+    }));
+  });
+
+  // socket handlers
+  io.on('connection', (socket) => {
+
+    socket.on('subscribeClient', (data) => {
+
+      let clientId = data.clientKey || socket.id;
+
+      if (clients[clientId] === undefined) {
+        clients[clientId] = {};
+      }
+
+      socket.clientId = clientId;
+
+      clients[clientId][socket.id] = socket;
+
+    });
+
+    socket.on('disconnect', () => {
+      delete clients[socket.clientId][socket.id];
+      if (!Object.keys(clients[socket.clientId]).length) {
+        delete clients[socket.clientId];
+      }
+    })
 
   });
 
-  socket.on('disconnect', () => {
-    delete clients[socket.clientId][socket.id];
-    if (!Object.keys(clients[socket.clientId]).length) {
-      delete clients[socket.clientId];
-    }
-  })
-
-});
-
-app.use(koaBody());
-
-nts.map((nt) => {
-  app.use(koaRoute[nt.route.method](nt.route.path, function *() {
-    Object.keys(clients[this.request.body.clientId]).map((key) => {
-      let socket = clients[this.request.body.clientId][key];
-      socket.emit('notification', nt.template);
-    });
-    this.body = nt.template;
-  }));
-});
-
-app.listen(configs.portHooks);
+  app.listen(configs.portHooks);
+}

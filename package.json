@@ -27,5 +27,8 @@
     "koa-body": "^1.4.0",
     "koa-route": "^2.4.2",
     "socket.io": "^1.4.4"
+  },
+  "devDependencies": {
+    "should": "^8.2.0"
   }
 }
