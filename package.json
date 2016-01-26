@@ -2,7 +2,7 @@
   "name": "hooksocket",
   "version": "1.0.0",
   "description": "A microservice who send socket messages triggered by webhooks",
-  "main": "app.js",
+  "main": "lib/hooksocket.js",
   "scripts": {
     "test": "grunt test"
   },
