@@ -16,16 +16,16 @@ $ npm i hooksocket
 ```javascript
 const hooksocket = require('hooksocket');
 
-hooksocket({
+hooksocket([{
   "route": {
     "method": "post",
     "path": "/path/to/notification"
   },
   "scope": "client",
   "msg": {
-    "template": "You receive a new messsage from { sender }, { link } to view."
+    "template": "You receive a new messsage from {sender}, {link} to view."
   }
-});
+}]);
 ```
 
 Send a json data like this to the server
